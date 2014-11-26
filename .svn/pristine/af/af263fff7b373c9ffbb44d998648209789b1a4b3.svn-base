@@ -1,0 +1,271 @@
+import java.util.ArrayList;
+import java.util.Random;
+
+/**
+ * A SkipList is a randomized multi-level linked list
+ * 
+ * @param <T>
+ *            The generic type of the list.
+ */
+public class SkipList<T extends Comparable<? super T>> {
+
+	private Node root; // dummy header node. You may want a dummy tail node as well.
+	private Node tail;
+	private int numNodesVisited=0;
+	private Random randomizer;
+
+	static int MAX_LINKS = 10;
+	
+	
+	public static void main(String[] args){
+		SkipList<Integer> list = new SkipList<>();
+//		ArrayList<Boolean> list2 = new ArrayList<Boolean>();
+//		list2.set(2, true);
+		System.out.println(list.getHeight());
+	}
+	/**
+	 * Creates a skip list with truly random numbers. We won't use this
+	 * constructor for our tests.
+	 */
+	public SkipList() {
+		this.randomizer = new Random();
+		reset();
+	}
+
+	/**
+	 * Creates a SkipList with a given fixed seed. This is better for testing.
+	 * 
+	 * @param seed
+	 *            A random seed.
+	 */
+	public SkipList(int seed) {
+		this.randomizer = new Random(seed);
+		reset();
+	}
+
+	// Creates the skip list's root and end nodes and does any other
+	// initialization needed.
+	private void reset() {
+		this.root = new Node();
+		this.root.setLinks(this.tail);
+	}
+
+	/**
+	 * Grabs the next random integer from the array
+	 * 
+	 * @return 0 or 1.
+	 */
+	public int getRand() {
+		int temp = this.randomizer.nextInt(2);
+		// Uncomment to see random values generated.
+//		 System.out.println("Random = " + temp);
+		return temp;
+	}
+	
+	
+	public int getHeight(){                      // Random a height for new Node
+		int count=0;
+		while(true){
+			if(this.getRand()==0){
+				break;
+			}
+			count++;
+		}
+		if(count>=SkipList.MAX_LINKS-1){
+			count = SkipList.MAX_LINKS-2;
+		}
+		return count;
+	}
+
+	/**
+	 * @return the root node
+	 */
+	public Node getRoot() {
+		return this.root;
+	}
+
+	/**
+	 * Inserts the elements in the array in the SkipList in order, then iterates
+	 * through the list, copying them back into the array, thus sorting the
+	 * array.
+	 * 
+	 * @param array
+	 */
+	public void sort(T[] array) {
+		// (For the next assignment, not this one.)
+		this.MAX_LINKS = 3*(int) Math.log(array.length);
+		// TODO: Increase MAX_LINKS, since 10 will be too small when sorting
+		// large arrays.
+
+		
+		this.reset();
+		for(T t: array){
+			this.insert(t);
+		}
+		Node cur = this.root.getLinks().get(0);
+		int index =0;
+		
+		while(cur != null ){
+			array[index] = cur.getElement();
+			index++;
+			cur = cur.getLinks().get(0);
+		}
+		// TODO: finish implementing sort.
+
+	}
+
+	/**
+	 * Inserts the given element in the list
+	 * 
+	 * @param e
+	 * @return true if successful; false otherwise
+	 */
+	public void setLink(Node cur, Node next,Node newNode,int level){              // set links from previous to the new added
+		cur.getLinks().set(level, newNode);                    // cur--> newNode--> next;
+		newNode.getLinks().add(0, next);
+	}
+	
+	public boolean insert(T e) {
+		Node newNode = new Node(e);
+//		newNode.setLinks(null);
+		int height = this.getHeight();
+		int level = this.root.getLinks().size()-2;
+		
+		Node cur = this.root;
+		while(true){
+//			System.out.println("level is now "+level);
+			Node next = cur.getLinks().get(level);
+			
+			if(next==null){                     // if next is tail                                  
+				if(level<=height){                             // setup links if neccessary
+					this.setLink(cur, next, newNode, level);
+				}
+				if(level==0){                   //return if bottom level
+					return true;
+				}
+				level--;                        // go down a level
+				continue;
+			}
+			         
+			if(next.getElement().compareTo(e)>=0){      
+				if(level<=height){                     // setup links if neccessary
+					this.setLink(cur, next, newNode, level);
+				}
+				   
+				if(level==0){
+					return true;                                //return if bottom level
+				}
+				level --;                      					 // go down a level
+			}
+			else {
+				this.numNodesVisited ++;                    // increment numNodesVisited
+				cur = next;        							// go to the next node 
+				                
+			} 
+		}
+	}
+
+	/**
+	 * Removes the given element from the list
+	 * 
+	 * @param e
+	 * @return true if successful; false otherwise
+	 */
+	public void removeLink(Node prev, Node target, int level){
+		prev.getLinks().set(level, target.getLinks().get(level));
+	}
+	
+	public boolean remove(T e) {
+		Node cur = this.root;
+		int level = SkipList.MAX_LINKS-2;
+		while(level>=0){
+			Node next = cur.getLinks().get(level);
+			if(next == null){                 // if next is null, go down a level
+				level --;
+				continue;
+			}
+			
+			if(next.getElement().compareTo(e)<0){    // if next is smaller than target 
+				cur = next;                          // go to the next node 
+				this.numNodesVisited++;
+				
+			}
+			else if(next.getElement().compareTo(e)>0){     // if next is greater than 
+				level --;                                  // target, go down a level
+			}
+			else{
+				this.removeLink(cur, next, level);     //if next is target,
+				if(level == 0){                        // link: cur--> next.next;
+					return true;                       // return true if bottom level;
+				}
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * @return the number of nodes visited during insertion and removal
+	 */
+	public int getNodesVisited() {
+		return this.numNodesVisited;
+	}
+
+	@Override
+	public String toString() {
+		Node cur = this.root.getLinks().get(0);
+		StringBuilder sb = new StringBuilder();
+		while(cur.getElement()!=null){
+			sb.append(cur.getElement());
+			cur = cur.getLinks().get(0);
+		}
+		return sb.toString();
+	}
+
+	/**
+	 * A Node holds data and links to the next node on its levels.
+	 * 
+	 */
+	public class Node {
+
+		private T element;
+		private ArrayList<Node> links;
+
+		
+		/**
+		 * Instantiates this node with the given element and links
+		 * 
+		 * @param e
+		 * @param size
+		 */
+		public Node(){
+			this.links = new ArrayList<>();
+		}
+		
+		public Node(T e) {
+			this.element = e;
+			this.links = new ArrayList<>();
+		}
+		
+		/**
+		 * Returns the list of links this node is holding
+		 * 
+		 * @return a list of links
+		 */
+		public ArrayList<Node> getLinks() {
+			return this.links;
+		}
+
+		/**
+		 * @return this node's element
+		 */
+		public T getElement() {
+			return this.element;
+		}
+		
+		public void setLinks(Node node){               // just for root to set its links
+			for(int i=0;i<SkipList.MAX_LINKS;i++){	   // add max_links number of tails
+				this.links.add(node);
+			}
+		}
+	}
+}
